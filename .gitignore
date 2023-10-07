@@ -1,0 +1,7 @@
+.idea/*
+tmp/*
+venv/*
+!**/.gitkeep
+.env
+*.docx#
+*.zip
