@@ -1,0 +1,5 @@
+argparse
+boto3
+pandas
+matplotlib
+python-docx
