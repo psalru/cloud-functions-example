@@ -1,13 +1,92 @@
 import os
+import re
 import json
 import docx
 import pandas as pd
+from docx.shared import Mm
 from datetime import datetime
 import matplotlib.pyplot as plt
 
 
 def gen_report(settings: dict):
-    pass
+    university_id = settings['id']
+    data_folder = f"{settings['folder']}/{university_id}"
+    doc = docx.Document('template.docx')
+    data = pd.read_csv(f"{data_folder}/data.csv", index_col=0)
+    tables = {}
+
+    # Вставляем параметры
+
+    for paragraph in doc.paragraphs:
+        found_param = re.finditer(r"\{\{\w+\}\}", paragraph.text)
+
+        if found_param:
+            for match in found_param:
+                fp = re.sub(r'[\{\}]', '', match.group())
+
+                if fp in data.index:
+                    value = data.loc[fp]['value']
+
+                    paragraph.text = paragraph.text.replace('{{' + str(fp) + '}}', str(value) if not pd.isnull(value) else '')
+
+    # Вставляем изображения
+
+    for paragraph in doc.paragraphs:
+        found_image = re.finditer(r"\[\[[^\]]+\]\]", paragraph.text)
+
+        if found_image:
+            for match in found_image:
+                fi = re.sub(r'[\[\]]', '', match.group().strip())
+                image_with_param = f"{data_folder}/{fi}".split(' ')
+                image = image_with_param[0]
+
+                if os.path.isfile(image):
+                    paragraph.text = ''
+                    r = paragraph.add_run()
+
+                    if len(image_with_param) > 1:
+                        pic_width = int(image_with_param[1])
+                        r.add_picture(image, width=Mm(pic_width))
+                    else:
+                        r.add_picture(image)
+
+    # Вставляем данные в таблицы
+    # styles = doc.styles
+    #
+    # print([x.name for x in styles])
+
+    # Сначала находим таблицы
+    for i, table in enumerate(doc.tables):
+        for row in table.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    annexes_param = re.findall(r"\(\(\w+\)\)", p.text)
+
+                    if annexes_param:
+                        annex_title = re.sub(r'[\(\)]', '', annexes_param[0])
+                        p.text = p.text.replace(annexes_param[0], '').strip()
+
+                        if annex_title not in tables.keys():
+                            tables[annex_title] = table
+
+    # Потом вставляем данные в таблицы
+    for key in tables.keys():
+        annex_df_file_path = f"{data_folder}/{key}.csv"
+
+        if os.path.isfile(annex_df_file_path):
+            annex_df = pd.read_csv(annex_df_file_path)
+            table = tables[key]
+            table.style = 'Normal Table'
+
+            for head_i, head in annex_df.iterrows():
+                cells = table.add_row().cells
+
+                for col_i, col in enumerate(annex_df.columns):
+                    cells[col_i].text = str(head[col])
+
+    # Сохраняем отчёт
+
+    doc.save(f"{data_folder}/report_{university_id}.docx")
 
 
 def gen_content(settings: dict):
@@ -18,7 +97,7 @@ def gen_content(settings: dict):
     university = df[df['university_id'] == university_id][['university_abbreviation', 'id']].\
         groupby(by='university_abbreviation', as_index=False).count().sort_values(by='id', ascending=False)['university_abbreviation'].unique()[0]
     data = pd.DataFrame(columns=['value'])
-    data.loc['datetime', 'value'] = datetime.now().strftime('%d.%m.%Y')
+    data.loc['datetime', 'value'] = datetime.now().strftime('%d.%m.%Y %H:%M')
     data.loc['university', 'value'] = university
     df['salary'] = df.apply(lambda x: x['salary_to'] if not pd.isnull(x['salary_to']) else x['salary_from'], axis=1)
     region = df[df['university_abbreviation'] == university][['region', 'id']].groupby(by='region', as_index=False).count().sort_values(by='id', ascending=False).iloc[0]['region']
@@ -143,7 +222,8 @@ def gen_content(settings: dict):
     # ТОП 10 вакансий по заработной плате
 
     df_top_by_salary = df[~df['salary'].isnull()].sort_values(by='salary', ascending=False).reset_index()[:10]
-    annex_top_by_salary = df_top_by_salary[['title', 'salary', 'university_abbreviation', 'url']]
+    annex_top_by_salary = df_top_by_salary[['title', 'salary', 'university_abbreviation', 'url']].copy()
+    annex_top_by_salary['salary'] = annex_top_by_salary['salary'].astype(int)
     data.loc['top_vacancies', 'value'] = texts['top_by_salary'].format(
         regions='; '.join([f"{i} ({x['id']})" for i, x in df_top_by_salary[['region', 'id']].groupby(by='region').count().sort_values(by='id', ascending=False).iterrows()]),
         count=len(df_top_by_salary['professional_roles'].unique()),
@@ -153,6 +233,6 @@ def gen_content(settings: dict):
     # Сохраняем результаты
 
     data.to_csv(f"{data_folder}/data.csv")
-    annex_top_by_salary.to_csv(f"{data_folder}/annex_top_by_salary.csv")
+    annex_top_by_salary.to_csv(f"{data_folder}/annex_top_by_salary.csv", index=False)
 
 

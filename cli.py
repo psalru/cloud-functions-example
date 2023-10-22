@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from generators import gen_report, gen_content
+from gen import gen_report, gen_content
 
 parser = ArgumentParser(
     prog='Отчёт по вакансиям на Cloud Functions',
@@ -13,5 +13,5 @@ parser.add_argument('-w', '--width', type=int, default=13, help='Ширина и
 parser.add_argument('-d', '--debug', action='store_true', help='Режим отладки. Если указан CLI показывает полный трек ошибок.')
 args = parser.parse_args()
 
-gen_report(vars(args))
 gen_content(vars(args))
+gen_report(vars(args))
