@@ -51,9 +51,6 @@ def gen_report(settings: dict):
                         r.add_picture(image)
 
     # Вставляем данные в таблицы
-    # styles = doc.styles
-    #
-    # print([x.name for x in styles])
 
     # Сначала находим таблицы
     for i, table in enumerate(doc.tables):
@@ -86,11 +83,14 @@ def gen_report(settings: dict):
 
     # Сохраняем отчёт
 
-    doc.save(f"{data_folder}/report_{university_id}.docx")
+    result_path = f"{data_folder}/report_{university_id}.docx"
+    doc.save(result_path)
+
+    return result_path
 
 
 def gen_content(settings: dict):
-    university_id, fig_width = settings['id'], settings['width']
+    university_id, fig_width = int(settings['id']), int(settings['width'])
     data_folder = f"{settings['folder']}/{university_id}"
     texts = json.load(open('texts.json', 'r'))
     df = pd.read_csv('https://storage.yandexcloud.net/psal.public/hosts/psal/dumps/hh_university_vacancies_by_month.csv', sep='|', index_col=0)
@@ -258,5 +258,3 @@ def gen_content(settings: dict):
 
     data.to_csv(f"{data_folder}/data.csv")
     annex_top_by_salary.to_csv(f"{data_folder}/annex_top_by_salary.csv", index=False)
-
-
