@@ -108,25 +108,38 @@ def gen_content(settings: dict):
     # Данные про преподавателей
 
     df_teachers = df[df['professional_roles'] == 'Учитель, преподаватель, педагог'].copy()
+    df_teachers_by_university = df_teachers[df_teachers['university_id'] == university_id].copy().sort_values(by='salary', ascending=False)
     teachers_mean_by_rf = df_teachers['salary'].mean() / 1000
     teachers_mean_by_region = df_teachers[df_teachers['region'] == region]['salary'].mean() / 1000
-    teachers_mean_by_university = df_teachers[df_teachers['university_id'] == university_id]['salary'].mean() / 1000
-    teachers_top_by_university = df_teachers[df_teachers['university_id'] == university_id].sort_values(by='salary', ascending=False).iloc[0]
     stat_by_teachers = pd.DataFrame([
         {'title': 'РФ', 'value': teachers_mean_by_rf},
-        {'title': region, 'value': teachers_mean_by_region},
-        {'title': university, 'value': teachers_mean_by_university},
+        {'title': region, 'value': teachers_mean_by_region}
     ]).dropna()
-    data.loc['description_teachers', 'value'] = texts['empty'].format(
-        prof_role='Учитель, преподаватель, педагог'
-    ) if university not in list(stat_by_teachers['title'].unique()) else texts['not_empty'].format(
-        prof_role='Учитель, преподаватель, педагог',
-        percent_of_rf='{0:0.2%}'.format(teachers_mean_by_university / teachers_mean_by_rf),
-        percent_of_region='{0:0.2%}'.format(teachers_mean_by_university / teachers_mean_by_region),
-        top_salary=round(teachers_top_by_university['salary'] / 1000, 0),
-        top_vacancy=teachers_top_by_university['title'],
-        top_url=teachers_top_by_university['url']
-    )
+
+    if len(df_teachers_by_university) > 0:
+        teachers_mean_by_university = df_teachers_by_university['salary'].mean() / 1000
+        teachers_top_by_university = df_teachers_by_university.sort_values(by='salary', ascending=False).iloc[0]
+        data.loc['description_teachers', 'value'] = texts['not_empty'].format(
+            prof_role='Учитель, преподаватель, педагог',
+            percent_of_rf='{0:0.2%}'.format(teachers_mean_by_university / teachers_mean_by_rf),
+            percent_of_region='{0:0.2%}'.format(teachers_mean_by_university / teachers_mean_by_region),
+            top_salary=round(teachers_top_by_university['salary'] / 1000, 0),
+            top_vacancy=teachers_top_by_university['title'],
+            top_url=teachers_top_by_university['url']
+        )
+        stat_by_teachers.loc[len(stat_by_teachers)] = {
+            'title': university,
+            'value': teachers_mean_by_university
+        }
+    else:
+        data.loc['description_teachers', 'value'] = texts['empty'].format(
+            prof_role='Учитель, преподаватель, педагог'
+        )
+        stat_by_teachers.loc[len(stat_by_teachers)] = {
+            'title': university,
+            'value': 0
+        }
+
     fig, ax = plt.subplots()
     ax.bar(stat_by_teachers['title'], stat_by_teachers['value'], color='green')
     ax.set_ylim(0, stat_by_teachers['value'].max() * 1.15)
@@ -146,25 +159,36 @@ def gen_content(settings: dict):
     # Про исследователей
 
     df_researcher = df[df['professional_roles'] == 'Научный специалист, исследователь'].copy()
+    df_researcher_by_university = df_researcher[df_researcher['university_id'] == university_id].copy().sort_values(by='salary', ascending=False)
+    researchers_mean_by_rf = df_researcher['salary'].mean() / 1000
+    researchers_mean_by_region = df_researcher[df_researcher['region'] == region]['salary'].mean() / 1000
     stat_by_researcher = pd.DataFrame([
         {'title': 'РФ', 'value': df_researcher['salary'].mean() / 1000},
         {'title': region, 'value': df_researcher[df_researcher['region'] == region]['salary'].mean() / 1000},
-        {'title': university, 'value': df_researcher[df_researcher['university_id'] == university_id]['salary'].mean() / 1000},
     ]).dropna()
-    researchers_mean_by_rf = df_researcher['salary'].mean() / 1000
-    researchers_mean_by_region = df_researcher[df_researcher['region'] == region]['salary'].mean() / 1000
-    researchers_mean_by_university = df_researcher[df_researcher['university_id'] == university_id]['salary'].mean() / 1000
-    researchers_top_by_university = df_researcher[df_researcher['university_id'] == university_id].sort_values(by='salary', ascending=False).iloc[0]
-    data.loc['description_researcher', 'value'] = texts['empty'].format(
-        prof_role='Учитель, преподаватель, педагог'
-    ) if university not in list(stat_by_researcher['title'].unique()) else texts['not_empty'].format(
-        prof_role='Научный специалист, исследователь',
-        percent_of_rf='{0:0.2%}'.format(researchers_mean_by_university / researchers_mean_by_rf),
-        percent_of_region='{0:0.2%}'.format(researchers_mean_by_university / researchers_mean_by_region),
-        top_salary=round(researchers_top_by_university['salary'] / 1000, 0),
-        top_vacancy=researchers_top_by_university['title'],
-        top_url=researchers_top_by_university['url']
-    )
+
+    if len(df_researcher_by_university) > 0:
+        researchers_mean_by_university = df_researcher_by_university['salary'].mean() / 1000
+        researchers_top_by_university = df_researcher_by_university.iloc[0]
+        data.loc['description_researcher', 'value'] = texts['not_empty'].format(
+            prof_role='Научный специалист, исследователь',
+            percent_of_rf='{0:0.2%}'.format(researchers_mean_by_university / researchers_mean_by_rf),
+            percent_of_region='{0:0.2%}'.format(researchers_mean_by_university / researchers_mean_by_region),
+            top_salary=round(researchers_top_by_university['salary'] / 1000, 0),
+            top_vacancy=researchers_top_by_university['title'],
+            top_url=researchers_top_by_university['url']
+        )
+        stat_by_researcher.loc[len(stat_by_researcher)] = {
+          'title': university,
+          'value': researchers_mean_by_university
+        }
+    else:
+        data.loc['description_researcher', 'value'] = texts['empty'].format(prof_role='Учитель, преподаватель, педагог')
+        stat_by_researcher.loc[len(stat_by_researcher)] = {
+            'title': university,
+            'value': 0
+        }
+
     fig, ax = plt.subplots()
     ax.bar(stat_by_researcher['title'], stat_by_researcher['value'], color='orange')
     ax.set_ylim(0, stat_by_researcher['value'].max() * 1.15)
